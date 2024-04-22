@@ -15,7 +15,7 @@ class Win(Enum):
     ONE_PAIR = "One Pair", 9
     HIGH_CARD = "High Card", 10
 
-players = int(input("Total Players: "))
+players = 6 # int(input("Total Players: "))
 
 # Player Hands
 
@@ -78,10 +78,6 @@ def comparePlayerCards(i):
     if len(triplets) > 1:
         indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in triplets]
         triplets.pop(indexList.index(max(indexList))) 
-    
-    if len(pairs) > 2:
-        indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in pairs]
-        pairs.pop(indexList.index(max(indexList)))
 
     if consecutive:
 
@@ -95,7 +91,11 @@ def comparePlayerCards(i):
         return Win.FOUR_OF_A_KIND, quads[1][0]
 
     if num_pairs >= 1 and num_triplets >= 1:
-        return Win.FULL_HOUSE, [triplets[0], deck.POSSIBLE_NUMBERS[min([deck.POSSIBLE_NUMBERS.index(i) for i in pairs])]] 
+        if len(pairs) > 2:
+            indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in pairs]
+            pairs.pop(indexList.index(max(indexList)))
+        return Win.FULL_HOUSE, (deck.POSSIBLE_NUMBERS[min([deck.POSSIBLE_NUMBERS.index(i) for i in triplets])], 
+                                deck.POSSIBLE_NUMBERS[min([deck.    POSSIBLE_NUMBERS.index(i) for i in pairs])])
     
     if same_shape:
         return Win.FLUSH, highCard
@@ -104,10 +104,20 @@ def comparePlayerCards(i):
         return Win.STRAIGHT, highCard
  
     if num_triplets >= 1: # if a player has 2 trios, it basically means they have a full house!
-        return Win.THREE_OF_A_KIND, triplets[0]
+        tripletHighCard = [x for x in cards if x.number != triplets[0]]
+        if len(tripletHighCard) == 0:
+            tripletHighCard = [x for x in TABLE if x.number != triplets[0]]
+        return Win.THREE_OF_A_KIND, (triplets[0], getHighCard(tripletHighCard))
     
     if num_pairs >= 2:
-        return Win.TWO_PAIR, pairs # Returns the two highest pair!
+
+        X = [element for element in checkList if element.number not in pairs]
+         
+        if len(pairs) > 2:
+            indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in pairs]
+            pairs.pop(indexList.index(max(indexList)))
+
+        return Win.TWO_PAIR, sorted(pairs, key=lambda x: deck.POSSIBLE_NUMBERS.index(x)), getHighCard(X) # Returns the two highest pair!
     
     if num_pairs == 1:
         return Win.ONE_PAIR, pairs[0]
@@ -186,23 +196,14 @@ def winner():
         data = comparePlayerCards(i)
         print(f'{str(i)}. {data[0].value[0]} -', data[1])
         save.append((i, data))
+    
+    print()
 
     save = sorted(save, key=lambda x : x[1][0].value[1])
-    
     top = save[0][1][0]
-    
-    print(top)
 
     if top == Win.ROYAL or save[1][1][0] != top: # Checking for royal flush or top winner with unique shit
-        print(f'Winner: {save[0]}')
-        return
-    
-    if top == Win.FOUR_OF_A_KIND:
-        if save[1][1][0] == top:
-            print(f'Winner: {save[0]}')
-            print(f'Winner: {save[1]}')
-            return
-        print(f'Winner: {save[0]}')
+        printWinner(save[0])
         return
     
     shared = []
@@ -211,11 +212,41 @@ def winner():
             shared.append(s)
     
     if len(shared) > 1:
-        if top == Win.STRAIGHT_FLUSH or top == Win.FLUSH or top == Win.STRAIGHT or top == Win.ONE_PAIR or top == Win.HIGH_CARD:
+        if top == Win.STRAIGHT_FLUSH or top == Win.FLUSH or top == Win.STRAIGHT or top == Win.HIGH_CARD or top == Win.ONE_PAIR or top ==  Win.FOUR_OF_A_KIND:
+            
             shared = sorted(shared, key=lambda x: deck.POSSIBLE_NUMBERS.index(x[1][1]))
-            print(f'Winner: {shared[0]}')
-        
+            highest = shared[0][1][1]
+            for s in shared:
+                if s[1][1] == highest:
+                    printWinner(s)
 
-    print(shared)
+        elif top == Win.FULL_HOUSE or top == Win.THREE_OF_A_KIND:
+
+            shared = sorted(shared, key=lambda x: (deck.POSSIBLE_NUMBERS.index(x[1][1][0]), deck.POSSIBLE_NUMBERS.index(x[1][1][1])))
+            highest = shared[0][1][1]
+            for s in shared:
+                if s[1][1] == highest:
+                    printWinner(s)
+
+        elif top == Win.TWO_PAIR:
+            
+            shared = sorted(shared, key=lambda x: (deck.POSSIBLE_NUMBERS.index(x[1][1][0]), 
+                                       deck.POSSIBLE_NUMBERS.index(x[1][1][1]), 
+                                       deck.POSSIBLE_NUMBERS.index(x[1][2])))
+            
+            highest = shared[0][1][1]
+            highCard = shared[0][1][2]
+            for s in shared:
+                if s[1][1] == highest and s[1][2] == highCard:
+                    printWinner(s)
+
+
+    print()
+    print("Potential Competition: ")
+    for s in shared:
+        print(s)
+
+def printWinner(data):
+    print(f'Winner: {data[0]} - {data[1][0].value[0]} - {data[1][1]}')
 
 winner()
