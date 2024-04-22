@@ -41,6 +41,3 @@ def getTopCard():
     
 createDeck()
 shuffle()
-printDeck()
-
-
