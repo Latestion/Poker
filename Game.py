@@ -183,6 +183,8 @@ print("Table:")
 printList(TABLE)
 print()
 
+WINNERS = []
+
 def winner():
     save = []
     print("Player Hand:")
@@ -199,6 +201,7 @@ def winner():
     if top == Win.ROYAL or save[1][1][0] != top: # Checking for royal flush or top winner with unique shit
         print("Winner: ", end="")
         printWinner(save[0])
+        WINNERS.append(save[0])
         return
     
     shared = [s for s in save if s[1][0] == top]
@@ -218,6 +221,7 @@ def winner():
     for s in shared:
         if s[1][1] == highest and (highCard is None or s[1][2] == highCard):
             print("Winner: ", end="")
+            WINNERS.append(s)
             printWinner(s)
 
     print()
@@ -232,3 +236,15 @@ def printWinner(data):
     print(s)
 
 winner()
+with open("data\\" + ', '.join(map(str, TABLE)) + ".txt", "w") as f:
+
+    w = ""
+    for win in WINNERS:
+        s = f'{win[0]} - {win[1][0].value[0]} - {win[1][1]}'
+        if len(win[1]) == 3:
+            s += " - HC: " + win[1][2] + "\n"
+        w += s
+
+    f.write(
+        f"All player hands: \n{[f'{str(i)}: {HANDS.get(i)[0]}, {HANDS.get(i)[1]}' for i in range(players)]}\nTable: \n{', '.join(map(str, TABLE))}\nWinners: \n{w}"
+    )
