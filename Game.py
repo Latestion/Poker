@@ -1,7 +1,7 @@
-import Deck as deck # Importing this automatically runs the methods which are called in its code, soo dont call it again here!
-from enum import Enum
+import Deck
 from Deck import *
-from collections import Counter
+from enum import Enum
+from WinUtil import *
 
 class Win(Enum):
     ROYAL = "Royal Flush", 1
@@ -15,236 +15,191 @@ class Win(Enum):
     ONE_PAIR = "One Pair", 9
     HIGH_CARD = "High Card", 10
 
-players = 6 # int(input("Total Players: "))
+class PokerGame():
 
-# Player Hands
+    def __init__(self, players):
+        self.players = players
+        self.HANDS = {}
+        self.TABLE = []
+        self.BURN_CARD = []
+        self.WINNERS = []
 
-HANDS = {
-    
-}
+        self.deck = Deck()
+        self.deck.createDeck()
 
-def distributeCards():
-    for i in range(players):
-        card = [deck.getTopCard(), deck.DECK.pop(players-1-i)] # gets the top card and the next CARD THEY ARE SUPPOSED TO GET
-        HANDS.setdefault(i, card)
+    def getDeck(self):
+        return self.deck
 
-def printHand(i):
-    cards = HANDS.get(i)
-    print(f'{str(i)}: {cards[0]}, {cards[1]}')
+    def getHands(self):
+        return self.HANDS
 
-def printAllHands():
-    print("All player hands:")
-    for i in range(players):
-        printHand(i)
+    def distributeCards(self):
+        for i in range(self.players):
+            card = [self.deck.getTopCard(), self.deck.pop(self.players-1-i)] 
+            self.HANDS.setdefault(i, card)
 
-distributeCards()
-printAllHands()
+    def printHand(self, i):
+        cards = self.HANDS.get(i)
+        print(f'{str(i)}: {cards[0]}, {cards[1]}')
 
-############
-# Table Code
-############
+    def printAllHands(self):
+        print("All player hands: ")
+        for i in range(self.players):
+            if i in self.HANDS:
+                self.printHand(i)
+            else:
+                print(f"{i}: None, None")
 
-TABLE = []
-BURN_CARD = []
+    ############
+    # Table Code
+    ############
 
-def dealFlop():
-    BURN_CARD.append(deck.getTopCard()) # BURN CARD
+    def dealTableCards(self, totalCards):
+        self.BURN_CARD.append(self.deck.getTopCard()) # BURN CARD
 
-    for _ in range(3):
-        TABLE.append(deck.getTopCard())
-    
-def dealTurnOrRiver():
-    BURN_CARD.append(deck.getTopCard()) # BURN CARD
-    TABLE.append(deck.getTopCard())
+        for _ in range(totalCards):
+            self.TABLE.append(self.deck.getTopCard())
 
-def printList(l):
-    print(', '.join(map(str, l)))
+    def printList(self, l):
+        print(', '.join(map(str, l)))
 
-def comparePlayerCards(i):
-    
-    cards = HANDS.get(i)
-    checkList = TABLE + cards
-    
-    highCard = getHighCard(checkList)
-    num_pairs, pairs, num_triplets, triplets = get_pairs_and_triplets([card.number for card in checkList])
-    quads = getRepeats(checkList, 4)
-    straight = checkStraight(checkList)
-
-    if len(triplets) > 1:
-        indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in triplets]
-        triplets.pop(indexList.index(max(indexList))) 
-
-    if straight[0]:
-        if straight[2] and straight[1]:
-            return Win.ROYAL, highCard
-        if straight[1]:
-            return Win.STRAIGHT_FLUSH, highCard
+    def comparePlayerCards(self, i):
         
-    if quads[0] == 1:
-        return Win.FOUR_OF_A_KIND, quads[1][0]
+        cards = self.HANDS.get(i)
+        checkList = self.TABLE + cards
+        
+        highCard = getHighCard(checkList)
+        num_pairs, pairs, num_triplets, triplets = get_pairs_and_triplets([card.number for card in checkList])
+        quads = getRepeats(checkList, 4)
+        straight = checkStraight(checkList)
 
-    if num_pairs >= 1 and num_triplets >= 1:
-        if len(pairs) > 2:
-            indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in pairs]
-            pairs.pop(indexList.index(max(indexList)))
-        return Win.FULL_HOUSE, (deck.POSSIBLE_NUMBERS[min([deck.POSSIBLE_NUMBERS.index(i) for i in triplets])], 
-                                deck.POSSIBLE_NUMBERS[min([deck.    POSSIBLE_NUMBERS.index(i) for i in pairs])])
-    if straight[1]:
-        return Win.FLUSH, highCard
+        if len(triplets) > 1:
+            indexList = [POSSIBLE_NUMBERS.index(num) for num in triplets]
+            triplets.pop(indexList.index(max(indexList))) 
+
+        if straight[0]:
+            if straight[2] and straight[1]:
+                return Win.ROYAL, highCard
+            if straight[1]:
+                return Win.STRAIGHT_FLUSH, highCard
+            
+        if quads[0] == 1:
+            return Win.FOUR_OF_A_KIND, quads[1][0]
+
+        if num_pairs >= 1 and num_triplets >= 1:
+            if len(pairs) > 2:
+                indexList = [POSSIBLE_NUMBERS.index(num) for num in pairs]
+                pairs.pop(indexList.index(max(indexList)))
+            return Win.FULL_HOUSE, (POSSIBLE_NUMBERS[min([POSSIBLE_NUMBERS.index(i) for i in triplets])], 
+                                    POSSIBLE_NUMBERS[min([POSSIBLE_NUMBERS.index(i) for i in pairs])])
+        if straight[1]:
+            return Win.FLUSH, highCard
+        
+        if straight[0]:
+            return Win.STRAIGHT, highCard
     
-    if straight[0]:
-        return Win.STRAIGHT, highCard
- 
-    if num_triplets >= 1: # if a player has 2 trios, it basically means they have a full house!
-        tripletHighCard = [x for x in cards if x.number != triplets[0]]
-        if len(tripletHighCard) == 0:
-            tripletHighCard = [x for x in TABLE if x.number != triplets[0]]
-        return Win.THREE_OF_A_KIND, (triplets[0], getHighCard(tripletHighCard))
-    
-    if num_pairs >= 2:
+        if num_triplets >= 1: # if a player has 2 trios, it basically means they have a full house!
+            tripletHighCard = [x for x in cards if x.number != triplets[0]]
+            if len(tripletHighCard) == 0:
+                tripletHighCard = [x for x in self.TABLE if x.number != triplets[0]]
+            return Win.THREE_OF_A_KIND, (triplets[0], getHighCard(tripletHighCard))
+        
+        if num_pairs >= 2:
 
-        X = [element for element in checkList if element.number not in pairs]
-         
-        if len(pairs) > 2:
-            indexList = [deck.POSSIBLE_NUMBERS.index(num) for num in pairs]
-            pairs.pop(indexList.index(max(indexList)))
+            X = [element for element in checkList if element.number not in pairs]
+            
+            if len(pairs) > 2:
+                indexList = [POSSIBLE_NUMBERS.index(num) for num in pairs]
+                pairs.pop(indexList.index(max(indexList)))
 
-        return Win.TWO_PAIR, sorted(pairs, key=lambda x: deck.POSSIBLE_NUMBERS.index(x)), getHighCard(X) # Returns the two highest pair!
-    
-    if num_pairs == 1:
-        return Win.ONE_PAIR, pairs[0]
-    
-    return Win.HIGH_CARD, highCard
+            return Win.TWO_PAIR, sorted(pairs, key=lambda x: POSSIBLE_NUMBERS.index(x)), getHighCard(X) # Returns the two highest pair!
+        
+        if num_pairs == 1:
+            return Win.ONE_PAIR, pairs[0]
+        
+        return Win.HIGH_CARD, highCard
 
-def get_pairs_and_triplets(numbers):
-    counts = Counter(numbers)
-    pairs = []
-    triplets = []
-    used_numbers = set()  # To keep track of numbers already used in pairs or triplets
-    
-    # Find triplets
-    for num, count in counts.items():
-        if count >= 3:
-            triplets.append(num)
-            used_numbers.add(num)
-    
-    # Find pairs (excluding numbers used in triplets)
-    for num, count in counts.items():
-        if count >= 2 and num not in used_numbers:
-            pairs.append(num)
-    
-    return len(pairs), pairs, len(triplets), triplets
+    def winner(self):
+        save = []
+        print("Player Hand:")
+        for i in range(self.players):
+            data = self.comparePlayerCards(i)
+            print(f'{str(i)}. {data[0].value[0]} -', data[1])
+            save.append((i, data))
+        
+        print()
 
-def getRepeats(card_list, i):
-    numbers = [card.number for card in card_list]
-    counts = Counter(numbers)
-    quads = [(num, count // i) for num, count in counts.items() if count >= i]
-    num_quads = sum(count for num, count in quads)
-    return num_quads, [num for num, count in quads]
+        save = sorted(save, key=lambda x : x[1][0].value[1])
+        top = save[0][1][0]
 
-def checkStraight(card_list):
-    consecutive = False
-    same_shape = False
-    royal = False
-    
-    shapes = {card.shape for card in card_list}
-    if len(shapes) == 1:
-        same_shape = True
-
-    numbers = [card.number for card in card_list]
-
-    if "A" in numbers and "2" in numbers and "3" in numbers and "4" in numbers and "5" in numbers:
-        consecutive = True
-    elif "A" in numbers and "K" in numbers and "Q" in numbers and "J" in numbers and "10" in numbers:
-        consecutive = True
-        royal = True
-    else:
-        for i in range(len(card_list) - 4):
-            if all(
-                POSSIBLE_NUMBERS.index(card_list[i + j].number) ==
-                    POSSIBLE_NUMBERS.index(card_list[i].number) + j
-                for j in range(5)
-            ):
-                consecutive = True
-                break
-
-    return consecutive, same_shape, royal
-
-def getHighCard(card_list):
-    numbers = [deck.POSSIBLE_NUMBERS.index(card.number) for card in card_list]
-    return deck.POSSIBLE_NUMBERS[min(numbers)]
-    
-dealFlop()
-dealTurnOrRiver()
-dealTurnOrRiver()
-
-print()
-print("Table:")
-printList(TABLE)
-print()
-
-WINNERS = []
-
-def winner():
-    save = []
-    print("Player Hand:")
-    for i in range(players):
-        data = comparePlayerCards(i)
-        print(f'{str(i)}. {data[0].value[0]} -', data[1])
-        save.append((i, data))
-    
-    print()
-
-    save = sorted(save, key=lambda x : x[1][0].value[1])
-    top = save[0][1][0]
-
-    if top == Win.ROYAL or save[1][1][0] != top: # Checking for royal flush or top winner with unique shit
-        print("Winner: ", end="")
-        printWinner(save[0])
-        WINNERS.append(save[0])
-        return
-    
-    shared = [s for s in save if s[1][0] == top]
-    
-    if top in [Win.STRAIGHT_FLUSH, Win.FLUSH, Win.STRAIGHT, Win.HIGH_CARD, Win.ONE_PAIR, Win.FOUR_OF_A_KIND]:
-        shared = sorted(shared, key=lambda x: deck.POSSIBLE_NUMBERS.index(x[1][1]))
-    elif top in [Win.FULL_HOUSE, Win.THREE_OF_A_KIND]:
-        shared = sorted(shared, key=lambda x: (deck.POSSIBLE_NUMBERS.index(x[1][1][0]), deck.POSSIBLE_NUMBERS.index(x[1][1][1])))
-    elif top == Win.TWO_PAIR:
-        shared = sorted(shared, key=lambda x: (deck.POSSIBLE_NUMBERS.index(x[1][1][0]), deck.POSSIBLE_NUMBERS.index(x[1][1][1]), deck.POSSIBLE_NUMBERS.index(x[1][2])))
-    
-    # Determine highest and high card for two pair hands
-    highest = shared[0][1][1]
-    highCard = shared[0][1][2] if top == Win.TWO_PAIR else None
-
-    # Print winner(s)
-    for s in shared:
-        if s[1][1] == highest and (highCard is None or s[1][2] == highCard):
+        if top == Win.ROYAL or save[1][1][0] != top: # Checking for royal flush or top winner with unique shit
             print("Winner: ", end="")
-            WINNERS.append(s)
-            printWinner(s)
+            self.printWinner(save[0])
+            self.WINNERS.append(save[0])
+            return
+        
+        shared = [s for s in save if s[1][0] == top]
+        
+        if top in [Win.STRAIGHT_FLUSH, Win.FLUSH, Win.STRAIGHT, Win.HIGH_CARD, Win.ONE_PAIR, Win.FOUR_OF_A_KIND]:
+            shared = sorted(shared, key=lambda x: POSSIBLE_NUMBERS.index(x[1][1]))
+        elif top in [Win.FULL_HOUSE, Win.THREE_OF_A_KIND]:
+            shared = sorted(shared, key=lambda x: (POSSIBLE_NUMBERS.index(x[1][1][0]), POSSIBLE_NUMBERS.index(x[1][1][1])))
+        elif top == Win.TWO_PAIR:
+            shared = sorted(shared, key=lambda x: (POSSIBLE_NUMBERS.index(x[1][1][0]), POSSIBLE_NUMBERS.index(x[1][1][1]), POSSIBLE_NUMBERS.index(x[1][2])))
+        
+        # Determine highest and high card for two pair hands
+        highest = shared[0][1][1]
+        highCard = shared[0][1][2] if top == Win.TWO_PAIR else None
+
+        # Print winner(s)
+        for s in shared:
+            if s[1][1] == highest and (highCard is None or s[1][2] == highCard):
+                print("Winner: ", end="")
+                self.WINNERS.append(s)
+                self.printWinner(s)
+
+        print()
+        print("Potential Competition: (HC = High Card)")
+        for s in shared:
+            self.printWinner(s)
+
+    def printWinner(self, data):
+        s = f'{data[0]} - {data[1][0].value[0]} - {data[1][1]}'
+        if len(data[1]) == 3:
+            s += " - HC: " + data[1][2]
+        print(s)
+
+    def saveWinner(self):
+        with open("data\\" + ', '.join(map(str, self.TABLE)) + ".txt", "w") as f:
+
+            w = ""
+            for win in self.WINNERS:
+                s = f'{win[0]} - {win[1][0].value[0]} - {win[1][1]}'
+                if len(win[1]) == 3:
+                    s += " - HC: " + win[1][2] + "\n"
+                w += s
+
+            f.write(
+                f"All player hands: \n{[f'{str(i)}: {self.HANDS.get(i)[0]}, {self.HANDS.get(i)[1]}' for i in range(self.players)]}\nTable: \n{', '.join(map(str, self.TABLE))}\nWinners: \n{w}"
+            )
+
+if __name__ == "__main__":
+
+    game = PokerGame(4)
+
+    game.getDeck().createDeck()
+
+    game.distributeCards()
+    game.printAllHands()
+
+    game.dealTableCards(3)
+    game.dealTableCards(1)
+    game.dealTableCards(1)
 
     print()
-    print("Potential Competition: (HC = High Card)")
-    for s in shared:
-        printWinner(s)
+    print("Table:")
+    game.printList(game.TABLE)
+    print()
 
-def printWinner(data):
-    s = f'{data[0]} - {data[1][0].value[0]} - {data[1][1]}'
-    if len(data[1]) == 3:
-        s += " - HC: " + data[1][2]
-    print(s)
+    game.winner()
 
-winner()
-with open("data\\" + ', '.join(map(str, TABLE)) + ".txt", "w") as f:
-
-    w = ""
-    for win in WINNERS:
-        s = f'{win[0]} - {win[1][0].value[0]} - {win[1][1]}'
-        if len(win[1]) == 3:
-            s += " - HC: " + win[1][2] + "\n"
-        w += s
-
-    f.write(
-        f"All player hands: \n{[f'{str(i)}: {HANDS.get(i)[0]}, {HANDS.get(i)[1]}' for i in range(players)]}\nTable: \n{', '.join(map(str, TABLE))}\nWinners: \n{w}"
-    )
