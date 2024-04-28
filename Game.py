@@ -121,6 +121,7 @@ class PokerGame():
 
     def winner(self):
         save = []
+        self.WINNERS = []
         print("Player Hand:")
         for i in range(self.players):
             data = self.comparePlayerCards(i)

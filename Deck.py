@@ -1,5 +1,6 @@
 from enum import Enum
 import random
+import itertools
 
 POSSIBLE_NUMBERS = ["A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"] # Only for refrence, DO NOT CHNAGE LATER
 
@@ -30,12 +31,13 @@ class Deck():
     def __init__(self):
         self.DECK = []
 
-    def createDeck(self):
+    def createDeck(self, shuffle = True):
         self.DECK.clear()
         for s in Shape:
             for num in POSSIBLE_NUMBERS:
                 self.DECK.append(Card(s, num))
-        random.shuffle(self.DECK)
+        if shuffle:
+            random.shuffle(self.DECK)
 
     def printDeck(self):
         print()
@@ -50,3 +52,20 @@ class Deck():
 
     def pop(self, i):
         return self.DECK.pop(i)
+
+    def getCard(self, shape, number):
+        for card in self.DECK:
+            if card.shape == shape and card.number == number:
+                return card
+        return None
+
+if __name__ == "__main__":
+    deck = Deck()
+    deck.createDeck(False)
+    
+    COMBINATION = itertools.combinations(itertools.combinations(deck.DECK, 2), 4)
+    for i in COMBINATION:
+        for x in i:
+            print(" ".join(map(str, x)))
+
+    input()

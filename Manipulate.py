@@ -1,48 +1,45 @@
 from Game import *
 from Util import *
+import itertools
+import json
 
 totalPlayers = int(input("Players: "))
 game = PokerGame(totalPlayers)
-
-USED = []
+game.getDeck().createDeck(False)
 
 def inputCard():
-    x = input("Card (Ex - 10S [10 of Spade]): ").upper()
-    x = None if len(x) == 0 or x in ["NONE", "NULL"] else (Shape.getShapeFromValue(x[-1]), x[0:-1])
-    if x is not None and (x[0] == None or x[1] not in POSSIBLE_NUMBERS):
-        print("Invalid Card!")
-        return inputCard()
-    elif x is not None:
-        card = Card(x[0], x[1])
-        if card in USED:
+    while True:
+        x = input("Card (Ex - 10S [10 of Spade]): ").upper()
+        if len(x) == 0 or x in ["NONE", "NULL"]:
+            return None
+        shape = Shape.getShapeFromValue(x[-1])
+        if shape is None or x[:-1] not in POSSIBLE_NUMBERS:
+            print("Invalid Card!")
+            continue
+        card = game.getDeck().getCard(shape, x[0:-1])
+        if card is None:
             print("This card is already being used!")
-            return inputCard()
+            continue
+        game.getDeck().DECK.remove(card)
         return card
-    return None 
 
 def modifyHand(player):
 
-    player_hand = game.getHands().get(player, [])
+    playerHand = game.getHands().get(player, [])
+    game.getDeck().DECK.extend(playerHand)
     
-    global USED
-    USED = list(set(USED) - set(player_hand))
-
     card1 = inputCard()
     card2 = inputCard()
-    USED.append(card1)
-    USED.append(card2)
 
     game.getHands()[player] = [card1, card2]
 
 def modifyTable():
 
-    pr = ""
-    npr = ""
+    pr, npr = "", ""
     for i in range(5):
         pr += ("None" if len(game.TABLE) <= i else str(game.TABLE[i])) + "\t"
         npr += str(i + 1) + "\t"
-    print(pr)
-    print(npr)
+    print(f'{pr}\n{npr}')
 
     card = int(input("Card: ")) - 1
 
@@ -59,6 +56,9 @@ def modifyTable():
             modifyTable()
             return
     
+    if len(game.TABLE) > card:
+        game.getDeck().DECK.append(game.TABLE[card])
+
     modified = inputCard()
 
     if len(game.TABLE) > card:
@@ -70,13 +70,103 @@ while True:
 
     cls()
     print(f"Total Players: {totalPlayers}\n")
-    option = int(input("Options:\n1. Player\n2. Table\n3. Calculate\n4. Exit\n"))
-    
+    option = int(input("Options:\n1. Player\n2. Table\n3. Calculate\n4. Exit\n5. Experimental\n"))
+
+    if option == 5:
+
+        TABLE_COMBINATIONS = itertools.combinations(game.deck.DECK, 5) 
+
+        for comb in TABLE_COMBINATIONS:
+            
+
+            game.TABLE.extend(comb[0:-2])
+
+            for card in game.TABLE:
+                game.deck.DECK.remove(card)
+
+            WINDICT = {
+                3: {},
+                4: {},
+                5: {}
+            } # TABLE_CARD: { [HAND]: (win, draw, loose) }
+
+            for refer in range(3):
+                
+                PLAYER_COMBINATION = itertools.combinations(itertools.combinations(game.deck.DECK, 2), totalPlayers)
+                key = refer + 3
+
+                for pcomb in PLAYER_COMBINATION:
+
+                    for player in range(totalPlayers):
+                        game.HANDS[player] = list(pcomb[player])
+
+                    game.winner()
+                
+                    for player in range(totalPlayers):
+                    
+                        hand = game.HANDS[player]
+                        wins = WINDICT.get(key, {}).get(" ".join(map(str, hand)), {"wins": 0, "draws": 0, "loss": 0})
+                
+                        if player in game.WINNERS:
+                            if len(game.WINNERS) > 1:
+                                wins["draws"] += 1 # Draw
+                            else: 
+                                wins["wins"] += 1 # Win
+                        else:
+                            wins["loss"] += 1 # Loose
+
+                        WINDICT[key][" ".join(map(str, hand))] = wins
+                                
+                if refer == 2: # No need to pop and add for 6th table card
+                    break
+
+                game.TABLE.append(comb[key])
+                game.deck.DECK.remove(comb[key])
+            
+            with open("data/" + " ".join(map(str, comb[0:-2])), "w") as file:
+                json.dump(dict, file)
+
+            game.deck.createDeck(False)
+            game.TABLE.clear()
+        
     if option == 4:
         cls()
         print("Exited!")
         exit()
 
+    elif option == 3:
+        
+        cls()
+        print("Calculating all possible wins: ")
+        print()
+
+        COMBINATION = itertools.combinations(itertools.combinations(game.deck.DECK, 2), totalPlayers - 1)
+
+        won = 0
+        draw = 0
+        totalGames = 0
+
+        for comb in COMBINATION:
+
+            # distribute the card
+            for i in range(totalPlayers - 1):
+                cards = list(comb[i])
+                game.HANDS[i + 1] = cards
+
+            game.winner()
+
+            if 0 in game.WINNERS:
+                if len(game.WINNERS) > 1:
+                    draw += 1
+                else:
+                    won += 1 
+
+            totalGames += 1
+
+        print(f"Total Games: {totalGames}")
+        print(f"Total Won: {won}")
+        print(f"Total Draw: {draw}")
+    
     elif option == 2:
         
         while True:
